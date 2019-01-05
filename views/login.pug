@@ -1,0 +1,36 @@
+extends layout
+
+block content
+    form(method="GET" id="loginForm")
+
+        fieldset(id="loginFieldset")
+            div(class="row margin-default")
+                input(
+                class="form-control"
+                type="text"
+                id="username"
+                name="Username"
+                placeholder="Username"
+                )
+
+            div(class="row margin-default")
+                input(
+                class="form-control"
+                type="password"
+                id="password"
+                name="Password"
+                placeholder="Password"
+                )
+
+            a(id="registerLink" href="javascript:void(0)") Click here to register new account
+
+            div(class="row margin-default")
+                input(
+                class="btn btn-primary active"
+                id="submitButton"
+                type="submit"
+                value="Login"
+                )
+
+        script
+            include ../controllers/login.js

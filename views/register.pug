@@ -1,0 +1,43 @@
+extends layout
+
+block content
+    form(method="GET" id="registerForm")
+
+        fieldset(id="registerFieldset")
+            div(class="row margin-default")
+                input(
+                class="form-control"
+                type="text"
+                id="username"
+                name="Username"
+                placeholder="Username"
+                )
+
+            div(class="row margin-default")
+                input(
+                class="form-control"
+                type="password"
+                id="password"
+                name="Password"
+                placeholder="Password"
+                )
+
+            div(class="row margin-default")
+                input(
+                class="form-control"
+                type="password"
+                id="rePassword"
+                name="Password"
+                placeholder="Retype password"
+                )
+
+            div(class="row margin-default")
+                input(
+                class="btn btn-primary active"
+                id="submitButton"
+                type="submit"
+                value="Register"
+                )
+
+            script
+                include ../controllers/register.js
