@@ -2,27 +2,30 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const passport = require('passport');
-require('../../utils.js');
+const utils = require('../../utils');
 
 const Account = mongoose.model('Account');
 
 router.get('/', function (req, res, next) {
-    let userRequest = {
-        username: req.query.username,
-        password: req.query.password
-    };
-    req.user = userRequest;
-
     try {
+        let userRequest = {
+            username: req.query.username,
+            password: req.query.password
+        };
+        req.user = userRequest;
+
         passport.authenticate('local', (err, user, info) => {
             console.log('Inside passport.authenticate() callback');
             console.log(`req.session.passport: ${JSON.stringify(req.session.passport)}`);
             console.log(`req.user: ${JSON.stringify(userRequest)}`);
             req.login(user, (err) => {
+                if (err) {
+                    return res.sendStatus(404)
+                }
                 console.log('Inside req.login() callback');
                 console.log(`req.session.passport: ${JSON.stringify(req.session.passport)}`);
                 console.log(`req.user: ${JSON.stringify(userRequest)}`);
-                navigate('search');
+                utils.navigate("search");
                 return res.sendStatus(200)
             })
         })(req, res, next);

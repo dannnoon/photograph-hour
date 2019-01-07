@@ -5,13 +5,13 @@ $(document).ready(function () {
     });
 
     function login() {
-        var loginFieldset = $("#loginFieldset");
-        var username = $("#username");
-        var password = $("#password");
+        const loginFieldset = $("#loginFieldset");
+        const username = $("#username");
+        const password = $("#password");
 
         loginFieldset.prop('disabled', true);
 
-        var data = {
+        const data = {
             username: username.val(),
             password: password.val()
         };

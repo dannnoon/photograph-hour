@@ -4,33 +4,35 @@ block content
     form(method="GET" id="loginForm")
 
         fieldset(id="loginFieldset")
-            div(class="row margin-default")
-                input(
-                class="form-control"
-                type="text"
-                id="username"
-                name="Username"
-                placeholder="Username"
-                )
+            div(class="card my-4")
+                h5(class="card-header") Credentials
 
-            div(class="row margin-default")
-                input(
-                class="form-control"
-                type="password"
-                id="password"
-                name="Password"
-                placeholder="Password"
-                )
+                div(class="card-body")
+                    div(class="input-group")
+                        div(class="col-md")
+                            input(
+                            class="form-control"
+                            type="text"
+                            id="username"
+                            name="Username"
+                            placeholder="Username"
+                            )
 
-            a(id="registerLink" href="javascript:void(0)") Click here to register new account
+                            input(
+                            class="form-control"
+                            type="password"
+                            id="password"
+                            name="Password"
+                            placeholder="Password"
+                            )
 
-            div(class="row margin-default")
-                input(
-                class="btn btn-primary active"
-                id="submitButton"
-                type="submit"
-                value="Login"
-                )
+                        div(class="col-md align-self-end")
+                            input(
+                            class="btn btn-primary active margin-default"
+                            id="submitButton"
+                            type="submit"
+                            value="Login"
+                            )
 
         script
             include ../controllers/login.js

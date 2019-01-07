@@ -20,6 +20,9 @@ passport.use(new LocalStrategy(
                 if (username === acc.username && password === acc.password) {
                     console.log('Local strategy returned true');
                     return done(null, acc);
+                } else {
+                    console.log('Local strategy returned false');
+                    return done(null, false);
                 }
             })
             .catch(() => {
