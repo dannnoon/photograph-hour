@@ -1,0 +1,357 @@
+#!/usr/bin/env python3
+# See LICENSE file for copyright and license details.
+
+import sys, os, pwd, time
+import solar_python as sol
+
+
+loc = None
+stop_date = None
+human = False
+unix = False
+local = False
+noon = False
+night = False
+blue = False
+gold = False
+unblue = False
+ungold = False
+morning = []
+evening = []
+dderiv = []
+nderiv = []
+res = '1s'
+
+
+## Parse command line
+argv0 = sys.argv[0] if len(sys.argv) > 0 else 'blue'
+def usage():
+    opts  =  '[-d delev]* [-D delev]* [-e elev]* [-m elev]* [-h [-L] | -u | -L]'
+    opts += ' [-l lat:lon | -l loc] [-s year-month-day | -s -] [-r num[h|m|s]]'
+    opts += ' [-bBgGnN]'
+    print('Usage: %s %s' % (argv0, opts), file = sys.stderr)
+    sys.exit(1)
+i, n = 1, len(sys.argv)
+def getarg():
+    global i, j, n, m
+    if j < m:
+        rc = arg[j:]
+        j = m
+        return rc
+    else:
+        j = m
+        i += 1
+        if i == n:
+            usage()
+        return sys.argv[i]
+while i < n:
+    arg = sys.argv[i]
+    if arg == '--':
+        i += 1
+        break
+    elif arg.startswith('-'):
+        j, m = 1, len(arg)
+        while j < m:
+            c = arg[j]
+            j += 1
+            if c == 'd':
+                dderiv.append(getarg())
+            elif c == 'D':
+                nderiv.append(getarg())
+            elif c == 'e':
+                evening.append(getarg())
+            elif c == 'm':
+                morning.append(getarg())
+            elif c == 'l':
+                loc = getarg()
+            elif c == 's':
+                stop_date = getarg()
+            elif c == 'r':
+                res = getarg()
+            elif c == 'b':
+                blue = True
+            elif c == 'B':
+                unblue = True
+            elif c == 'g':
+                gold = True
+            elif c == 'G':
+                ungold = True
+            elif c == 'h':
+                human = True
+            elif c == 'u':
+                unix = True
+            elif c == 'L':
+                local = True
+            elif c == 'n':
+                noon = True
+            elif c == 'N':
+                night = True
+            else:
+                usage()
+        i += 1
+    else:
+        break
+if i != n or (human and unix) or (local and unix):
+    usage()
+
+
+## Parse resolution
+if len(res) < 2:
+    usage()
+mul = {'s' : 1.0, 'm' : 60.0, 'h' : 60 * 60.0}
+suffix = res[-1]
+value = res[:-1]
+if '.' in value:
+    usage()
+try:
+    res = int(value) * mul[suffix]
+except:
+    usage()
+
+
+## Parse elevations
+try:
+    evening = [float(e) for e in evening]
+    morning = [float(e) for e in morning]
+    dderiv  = [float(e) for e in dderiv]
+    nderiv  = [float(e) for e in nderiv]
+    for e in evening + morning:
+        if abs(e) > 90:
+            usage()
+except:
+    usage()
+
+
+## Parse -bBgGnN
+if blue:
+    morning.append(sol.SOLAR_ELEVATION_RANGE_BLUE_HOUR[0])
+    evening.append(sol.SOLAR_ELEVATION_RANGE_BLUE_HOUR[1])
+if unblue:
+    morning.append(sol.SOLAR_ELEVATION_RANGE_BLUE_HOUR[1])
+    evening.append(sol.SOLAR_ELEVATION_RANGE_BLUE_HOUR[0])
+if gold:
+    morning.append(sol.SOLAR_ELEVATION_RANGE_GOLDEN_HOUR[0])
+    evening.append(sol.SOLAR_ELEVATION_RANGE_GOLDEN_HOUR[1])
+if ungold:
+    morning.append(sol.SOLAR_ELEVATION_RANGE_GOLDEN_HOUR[1])
+    evening.append(sol.SOLAR_ELEVATION_RANGE_GOLDEN_HOUR[0])
+if noon:
+    dderiv.append(0.0)
+if night:
+    nderiv.append(0.0)
+
+
+## Fallback options
+if len(morning) == 0 and len(evening) == 0 and len(dderiv) == 0 and len(nderiv) == 0:
+    morning.append(sol.SOLAR_ELEVATION_RANGE_BLUE_HOUR[0])
+    evening.append(sol.SOLAR_ELEVATION_RANGE_BLUE_HOUR[1])
+
+
+## Get geolocation
+def get_geolocation_from_conf(filename, ispath = False):
+    filenames, lat, lon = [], None, None
+    if ispath:
+        filenames.append(filename)
+    else:
+        if 'HOME' in os.environ and len(os.environ['HOME']) > 0:
+            filenames.append(os.environ['HOME'] + '/.config/' + filename)
+        try:
+            filenames.append(pwd.getpwuid(os.getuid()).pw_dir + '/.config/' + filename)
+        except:
+            pass
+        filenames.append('/etc/' + filename)
+    for filename in filenames:
+        try:
+            with open(filename, 'rb') as file:
+                loc = file.read().decode('utf-8', 'replace').split('\n')[0]
+            (lat, lon) = loc.split(' ')
+            lat, lon = float(lat), float(lon)
+            break
+        except:
+            lat, lon = None, None
+    return (lat, lon)
+if loc is not None:
+    try:
+        (lat, lon) = loc.split(':')
+        lat = float(lat)
+        lon = float(lon)
+        if (abs(lat) > 90 or abs(lon) > 180):
+            lat = None
+    except:
+        lat = None
+    if lat is None:
+        if loc.startswith('./') or loc.startswith('../') or loc.startswith('/'):
+            locfile = loc
+        else:
+            locfile = 'geolocation.d/' + loc
+        (lat, lon) = get_geolocation_from_conf(locfile, locfile is loc)
+    if lat is None:
+        print('%s: bad location: %s' % (argv0, loc), file = sys.stderr)
+        sys.exit(1)
+else:
+    (lat, lon) = get_geolocation_from_conf('geolocation')
+    if lat is None:
+        print('%s: no geolocation set' % argv0, file = sys.stderr)
+        sys.exit(1)
+
+
+## Parse stop date
+if stop_date is not None:
+    if stop_date == '-':
+        stop_date = ...
+    else:
+        try:
+            tm = time.strptime(stop_date, '%Y-%m-%d')
+            stop_date = (tm.tm_year, tm.tm_mon, tm.tm_mday)
+        except:
+            usage()
+else:
+    tm = time.localtime()
+    if tm.tm_mon < 12:
+        y, m, d = tm.tm_year, tm.tm_mon + 1, tm.tm_mday - 1
+    else:
+        y, m, d = tm.tm_year + 1, 1, tm.tm_mday - 1
+    if d < 1:
+        m -= 1
+        if m < 1:
+            m = 12
+            y -= 1
+        days = 29 if y % 400 == 0 or (y % 4 == 0 and not y % 100 == 0) else 28
+        days = [31, days, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+        d = days[m - 1]
+    else:
+        days = 29 if y % 400 == 0 or (y % 4 == 0 and not y % 100 == 0) else 28
+        days = [31, days, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+        if d > days[m - 1]:
+            d = days[m - 1]
+    stop_date = (y, m, d)
+
+
+## Get stop time
+if stop_date is ...:
+    stop_time = None
+else:
+    stop_time = '%i-%02i-%02i 12:00:00' % stop_date
+    guessed = time.mktime(time.strptime(stop_time, '%Y-%m-%d %H:%M:%S'))
+    is_summer = False
+    for tzname, summer in zip(time.tzname, (False, True)):
+        if time.mktime(time.strptime('%s %s' % (stop_time, tzname), '%Y-%m-%d %H:%M:%S %Z')) == guessed:
+            is_summer = summer
+            break
+    (y, m, d) = stop_date
+    days = 29 if y % 400 == 0 or (y % 4 == 0 and not y % 100 == 0) else 28
+    days = [31, days, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    stop_time = d - 1
+    for i in range(m - 1):
+        stop_time += days[i]
+    y -= 1
+    stop_time +=    y * 365 +    y // 4 -    y // 100 +    y // 400
+    stop_time -= 1969 * 365 + 1969 // 4 - 1969 // 100 + 1969 // 400
+    stop_time *= 24 * 60 * 60
+    stop_time += 24 * 60 * 60
+    stop_time -= (time.altzone if is_summer else time.timezone)
+
+
+def get_elev(elev, start, morning):
+    end = start + 0.0099
+    while start < end:
+        rc = sol.future_elevation(lat, lon, elev, start)
+        if rc is None:
+            return (None, end)
+        else:
+            start = rc + 1e-06
+            d  = sol.solar_elevation(lat, lon, rc + 3e-09)
+            d -= sol.solar_elevation(lat, lon, rc)
+            if d >= 0 if morning else d <= 0:
+                return (sol.julian_centuries_to_epoch(rc), start)
+    return (None, end)
+
+def get_deriv(delev, start, daytime):
+    end = start + 0.0099
+    while start < end:
+        rc = sol.future_elevation_derivative(lat, lon, delev, start)
+        if rc is None:
+            return (None, end)
+        else:
+            start = rc + 1e-06
+            elev = sol.solar_elevation(lat, lon, rc)
+            if elev >= 0 if daytime else elev <= 0:
+                return (sol.julian_centuries_to_epoch(rc), start)
+    return (None, end)
+
+def get_morning(elev, start):
+    return get_elev(elev, start, True)
+
+def get_evening(elev, start):
+    return get_elev(elev, start, False)
+
+def get_day(delev, start):
+    return get_deriv(delev, start, True)
+
+def get_night(delev, start):
+    return get_deriv(delev, start, False)
+
+now = sol.epoch_to_julian_centuries(time.time())
+class State:
+    def __init__(self, val, fun):
+        self.start = now
+        self.val = val
+        self.fun = fun
+    def next(self):
+        (rc, self.start) = self.fun(self.val, self.start)
+        return (rc, self.start)
+
+morning = [State(v, get_morning) for v in morning]
+evening = [State(v, get_evening) for v in evening]
+dderiv  = [State(v, get_day)     for v in dderiv]
+nderiv  = [State(v, get_night)   for v in nderiv]
+states  = morning + evening + dderiv + nderiv
+
+
+# So we can stop of the pipe breaks (useful with -s -)
+def print(msg):
+    msg = (str(msg) + '\n').encode('utf-8')
+    ptr, n = 0, len(msg)
+    while ptr < n:
+        ptr += os.write(1, msg[ptr:])
+
+def parse_time(t, localtime, tzname):
+    tm = time.localtime(t) if localtime else time.gmtime(t)
+    if localtime and tm.tm_isdst < 0:
+        tm = time.gmtime(t)
+        localtime = False
+    if not localtime:
+        tz = 'UTC' if tzname else 'Z'
+    else:
+        tz = time.strftime('%Z' if tzname else '%z', tm)
+    return tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, tz
+
+jc_stop_time = sol.epoch_to_julian_centuries(stop_time) if stop_time is not None else None
+months = ('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
+try:
+    while len(states) > 0:
+        n = len(states)
+        i = 0
+        while i < n:
+            (t, s) = states[i].next()
+            if t is not None and (stop_time is None or t < stop_time):
+                t = int(t / res + 0.5) * res
+                if unix:
+                    print(int(t))
+                else:
+                    t = parse_time(t, local, human)
+                    if human:
+                        (y, m, d, H, M, S, z) = t
+                        t = (y, m, months[m - 1], d, H, M, S, z)
+                        print('%i-(%02i)%s-%02i %02i:%02i:%02i %s' % t)
+                    else:
+                        print('%i-%02i-%02iT%02i:%02i:%02i%s' % t)
+            if jc_stop_time is not None and s >= jc_stop_time:
+                del states[i]
+                n -= 1
+            else:
+                i += 1
+except KeyboardInterrupt as e:
+    sys.exit(0)
+except BrokenPipeError as e:
+    sys.exit(0)

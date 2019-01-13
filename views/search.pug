@@ -1,5 +1,10 @@
 extends layout
 
+block nav
+    li(class="nav-item active")
+        a(class="nav-link" href="javascript:void(0)" id="logout") Logout
+        span(class="sr-only") (current)
+
 block content
     div(class="row")
         div(class="col-md-8")
@@ -12,6 +17,18 @@ block content
                             button(class="btn btn-secondary" type="button") Go!
 
         div(class="col-md-4")
-
+            div(class="card")
+                h5(class="card-header") Your localization
+                div(class="card-body")
+                    div(class="row")
+                        div(class="col-4")
+                            p Country
+                        div(class="col-8")
+                            p(id="country") Unknown
+                    div(class="row")
+                        div(class="col-4")
+                            p City
+                        div(class="col-8")
+                            p(id="city") Unknown
     script
         include ../controllers/search.js

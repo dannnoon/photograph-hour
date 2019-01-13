@@ -22,6 +22,9 @@ $(document).ready(() => {
             url: "http://localhost:3000/api/account",
             data: JSON.stringify(data),
             dataType: "json",
+            success: (data) => {
+                showSuccessNotification(data.message)
+            },
             error: (error) => {
                 showErrorNotification("Registration failed.")
             },

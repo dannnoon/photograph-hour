@@ -22,8 +22,11 @@ $(document).ready(function () {
             url: "http://localhost:3000/api/account",
             data: data,
             dataType: "json",
+            success: () => {
+                location.reload(true);
+            },
             error: function (error) {
-                showErrorNotification("Incorrect username or password.")
+                showErrorNotification("Incorrect username or password.");
             },
             complete: function (jq, status) {
                 loginFieldset.prop('disabled', false);
@@ -33,8 +36,4 @@ $(document).ready(function () {
         username.val("");
         password.val("");
     }
-
-    $("#registerLink").on('click', () => {
-        navigate('register')
-    });
 });

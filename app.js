@@ -37,9 +37,24 @@ passport.serializeUser((user, done) => {
     done(null, user._id);
 });
 
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
-var accountRouter = require('./routes/api/account');
+passport.deserializeUser((id, done) => {
+    console.log('Inside deserializeUser callback');
+    console.log(`The user id passport saved in the session file store is: ${id}`);
+    Account.findOne({_id: id})
+        .then((acc) => {
+            done(null, acc);
+        })
+        .catch(() => {
+            done(null, false);
+        });
+});
+
+const indexRouter = require('./routes/index');
+const usersRouter = require('./routes/users');
+const loginRouter = require('./routes/login');
+const registerRouter = require('./routes/register');
+const accountRouter = require('./routes/api/account');
+const geolocalizationRouter = require('./routes/api/geolocalization');
 
 var app = express();
 
@@ -63,7 +78,10 @@ app.use(passport.session());
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
+app.use('/login', loginRouter);
+app.use('/register', registerRouter);
 app.use('/api/account', accountRouter);
+app.use('/api/geolocalization', geolocalizationRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
